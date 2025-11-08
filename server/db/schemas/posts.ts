@@ -1,9 +1,12 @@
 import { relations } from "drizzle-orm";
 import { integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
+import { createInsertSchema } from "drizzle-zod";
+import z, { url } from "zod";
+
 import { userTable } from "./auth";
 import { commentsTable } from "./comments";
-import { commentUpvoteTable, postUpvotesTable } from "./upvotes";
+import { postUpvotesTable } from "./upvotes";
 
 export const postsTable = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -18,6 +21,20 @@ export const postsTable = pgTable("posts", {
   })
     .defaultNow()
     .notNull(),
+});
+
+export const insertPostSchema = createInsertSchema(postsTable, {
+  title: z
+    .string()
+    .min(3, { message: "title must be atleast 3 characters long" }),
+
+  url: z
+    .string()
+    .url({ message: "Not a valid url" })
+    .optional()
+    .or(z.literal("")),
+
+  content: z.string().optional(),
 });
 
 export const postsRelations = relations(postsTable, ({ one, many }) => ({
