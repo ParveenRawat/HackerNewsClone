@@ -1,6 +1,5 @@
 import type { Env } from "hono";
-
-import type { Session, User } from "lucia";
+import type { User, Session } from "lucia";
 
 export interface Context extends Env {
   Variables: {

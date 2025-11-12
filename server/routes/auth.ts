@@ -1,17 +1,15 @@
-import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
-import { eq } from "drizzle-orm";
-
 import { db } from "@/adapter";
 import type { Context } from "@/context";
 import { userTable } from "@/db/schemas/auth";
 import { lucia } from "@/lucia";
-import { loggedIn } from "@/middleware/loggedin";
+import { loggedIn } from "@/middleware/loggedIn";
+import { loginSchema, type SuccessResponse } from "@/shared/types";
 import { zValidator } from "@hono/zod-validator";
+import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import { generateId } from "lucia";
 import postgres from "postgres";
-
-import { loginSchema, type SuccessResponse } from "@/shared/types";
 
 export const authRouter = new Hono<Context>()
   .post("/signup", zValidator("form", loginSchema), async (c) => {
@@ -40,16 +38,14 @@ export const authRouter = new Hono<Context>()
       );
     } catch (error) {
       if (error instanceof postgres.PostgresError && error.code === "23505") {
-        throw new HTTPException(409, {
-          message: "Username already used",
-          cause: { form: true },
-        });
+        throw new HTTPException(409, { message: "Username already used" });
       }
       throw new HTTPException(500, { message: "Failed to create user" });
     }
   })
   .post("/login", zValidator("form", loginSchema), async (c) => {
     const { username, password } = c.req.valid("form");
+
     const [existingUser] = await db
       .select()
       .from(userTable)
@@ -58,7 +54,7 @@ export const authRouter = new Hono<Context>()
 
     if (!existingUser) {
       throw new HTTPException(401, {
-        message: "Incorrect Username",
+        message: "Incorrect username",
       });
     }
 
@@ -78,7 +74,7 @@ export const authRouter = new Hono<Context>()
     return c.json<SuccessResponse>(
       {
         success: true,
-        message: "Logged In",
+        message: "Logged in",
       },
       200,
     );
@@ -95,10 +91,9 @@ export const authRouter = new Hono<Context>()
   })
   .get("/user", loggedIn, async (c) => {
     const user = c.get("user")!;
-
     return c.json<SuccessResponse<{ username: string }>>({
       success: true,
-      message: "user fetched",
+      message: "User fetched",
       data: { username: user.username },
     });
   });

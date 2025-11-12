@@ -1,13 +1,12 @@
+import { type ErrorResponse } from "@/shared/types";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-
-import type { ErrorResponse } from "@/shared/types";
-
-import type { Context } from "./context";
 import { lucia } from "./lucia";
+import type { Context } from "./context";
 import { authRouter } from "./routes/auth";
 import { postRouter } from "./routes/posts";
+import { commentsRouter } from "./routes/comments";
 
 const app = new Hono<Context>();
 
@@ -35,10 +34,12 @@ app.use("*", cors(), async (c, next) => {
   return next();
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const routes = app
   .basePath("/api")
   .route("/auth", authRouter)
-  .route("/posts", postRouter);
+  .route("/posts", postRouter)
+  .route("/comments", commentsRouter);
 
 app.onError((err, c) => {
   if (err instanceof HTTPException) {
@@ -71,5 +72,4 @@ app.onError((err, c) => {
 });
 
 export default app;
-
 export type ApiRoutes = typeof routes;

@@ -1,6 +1,6 @@
-import { insertCommentSchema } from "@/db/schemas/comments";
+import { insertCommentsSchema } from "@/db/schemas/comments";
 import { insertPostSchema } from "@/db/schemas/posts";
-import z from "zod";
+import { z } from "zod";
 
 export type SuccessResponse<T = void> = {
   success: true;
@@ -9,7 +9,7 @@ export type SuccessResponse<T = void> = {
 
 export type ErrorResponse = {
   success: false;
-  error?: string;
+  error: string;
   isFormError?: boolean;
 };
 
@@ -29,7 +29,7 @@ export const createPostSchema = insertPostSchema
     content: true,
   })
   .refine((data) => data.url || data.content, {
-    message: "Either url or Content must be passed",
+    message: "Either URL or Content must be provided",
     path: ["url", "content"],
   });
 
@@ -37,13 +37,15 @@ export const sortBySchema = z.enum(["points", "recent"]);
 export const orderSchema = z.enum(["asc", "desc"]);
 
 export const paginationSchema = z.object({
-  limit: z.coerce.number().optional().default(10),
-  page: z.coerce.number().optional().default(1),
+  limit: z.number({ coerce: true }).optional().default(10),
+  page: z.number({ coerce: true }).optional().default(1),
   sortBy: sortBySchema.optional().default("points"),
-  order: orderSchema.optional().default("asc"),
+  order: orderSchema.optional().default("desc"),
   author: z.optional(z.string()),
   site: z.string().optional(),
 });
+
+export const createCommentSchema = insertCommentsSchema.pick({ content: true });
 
 export type Post = {
   id: number;
@@ -59,18 +61,6 @@ export type Post = {
   };
   isUpvoted: boolean;
 };
-
-export type PaginatedResponse<T> = {
-  pagination: {
-    page: number;
-    totalPages: number;
-  };
-  data: T;
-} & Omit<SuccessResponse, "data">;
-
-export const createCommentSchema = insertCommentSchema.pick({
-  content: true,
-});
 
 export type Comment = {
   id: number;
@@ -91,3 +81,11 @@ export type Comment = {
   };
   childComments?: Comment[];
 };
+
+export type PaginatedResponse<T> = {
+  pagination: {
+    page: number;
+    totalPages: number;
+  };
+  data: T;
+} & Omit<SuccessResponse, "data">;

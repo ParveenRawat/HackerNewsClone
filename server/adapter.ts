@@ -1,14 +1,13 @@
+import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
 import { drizzle } from "drizzle-orm/postgres-js";
 
-import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
 import postgres from "postgres";
 import { z } from "zod";
-
 import { sessionTable, userRelations, userTable } from "./db/schemas/auth";
-import { commentsTable } from "./db/schemas/comments";
 import { postsRelations, postsTable } from "./db/schemas/posts";
+import { commentRelations, commentsTable } from "./db/schemas/comments";
 import {
-  commentUpvotesRelation,
+  commentUpvoteRelations,
   commentUpvotesTable,
   postUpvoteRelations,
   postUpvotesTable,
@@ -21,7 +20,6 @@ const EnvSchema = z.object({
 const processEnv = EnvSchema.parse(process.env);
 
 const queryClient = postgres(processEnv.DATABASE_URL);
-
 export const db = drizzle(queryClient, {
   schema: {
     user: userTable,
@@ -29,11 +27,12 @@ export const db = drizzle(queryClient, {
     posts: postsTable,
     comments: commentsTable,
     postUpvotes: postUpvotesTable,
-    commentUpvotes: commentUpvotesTable,
+    commentUpvoted: commentUpvotesTable,
     postsRelations,
-    commentUpvotesRelation,
+    commentUpvoteRelations,
     postUpvoteRelations,
     userRelations,
+    commentRelations,
   },
 });
 

@@ -1,34 +1,30 @@
-import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
-import { and, asc, countDistinct, desc, eq, isNull, sql } from "drizzle-orm";
-
 import { db } from "@/adapter";
-import type { Context } from "@/context";
+import { type Context } from "@/context";
 import { userTable } from "@/db/schemas/auth";
 import { commentsTable } from "@/db/schemas/comments";
 import { postsTable } from "@/db/schemas/posts";
 import { commentUpvotesTable, postUpvotesTable } from "@/db/schemas/upvotes";
-import { loggedIn } from "@/middleware/loggedin";
-import { zValidator } from "@hono/zod-validator";
-import z from "zod";
-
+import { getISOFormatDateQuery } from "@/lib/utils";
+import { loggedIn } from "@/middleware/loggedIn";
 import {
+  type Comment,
   createCommentSchema,
   createPostSchema,
-  paginationSchema,
-  type Comment,
   type PaginatedResponse,
+  paginationSchema,
   type Post,
   type SuccessResponse,
 } from "@/shared/types";
-import { getISOFormatDateQuery } from "@/lib/utils";
+import { zValidator } from "@hono/zod-validator";
+import { and, asc, countDistinct, desc, eq, isNull, sql } from "drizzle-orm";
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { z } from "zod";
 
 export const postRouter = new Hono<Context>()
   .post("/", loggedIn, zValidator("form", createPostSchema), async (c) => {
     const { title, url, content } = c.req.valid("form");
-
     const user = c.get("user")!;
-
     const [post] = await db
       .insert(postsTable)
       .values({
@@ -38,16 +34,14 @@ export const postRouter = new Hono<Context>()
         userId: user.id,
       })
       .returning({ id: postsTable.id });
-
-    if (!post) {
-      throw new HTTPException(500, { message: "Failed to create post" });
-    }
-
-    return c.json<SuccessResponse<{ postId: number }>>({
-      success: true,
-      message: "Post Created",
-      data: { postId: post.id },
-    });
+    return c.json<SuccessResponse<{ postId: number }>>(
+      {
+        success: true,
+        message: "Post created",
+        data: { postId: post.id },
+      },
+      201,
+    );
   })
   .get("/", zValidator("query", paginationSchema), async (c) => {
     const { limit, page, sortBy, order, author, site } = c.req.valid("query");
@@ -116,7 +110,7 @@ export const postRouter = new Hono<Context>()
         message: "Posts fetched",
         pagination: {
           page: page,
-          totalPages: Math.ceil(count!.count / limit) as number,
+          totalPages: Math.ceil(count.count / limit) as number,
         },
       },
       200,
@@ -125,19 +119,14 @@ export const postRouter = new Hono<Context>()
   .post(
     "/:id/upvote",
     loggedIn,
-    zValidator(
-      "param",
-      z.object({
-        id: z.coerce.number(),
-      }),
-    ),
+    zValidator("param", z.object({ id: z.coerce.number() })),
     async (c) => {
       const { id } = c.req.valid("param");
       const user = c.get("user")!;
       let pointsChange: -1 | 1 = 1;
 
       const points = await db.transaction(async (tx) => {
-        const [existingUpvote] = await db
+        const [existingUpvote] = await tx
           .select()
           .from(postUpvotesTable)
           .where(
@@ -163,13 +152,13 @@ export const postRouter = new Hono<Context>()
         if (existingUpvote) {
           await tx
             .delete(postUpvotesTable)
-            .where(eq(postUpvotesTable.postId, existingUpvote.id));
+            .where(eq(postUpvotesTable.id, existingUpvote.id));
         } else {
-          await tx.insert(postUpvotesTable).values({
-            postId: id,
-            userId: user.id,
-          });
+          await tx
+            .insert(postUpvotesTable)
+            .values({ postId: id, userId: user.id });
         }
+
         return updated.points;
       });
 
@@ -177,10 +166,7 @@ export const postRouter = new Hono<Context>()
         {
           success: true,
           message: "Post updated",
-          data: {
-            count: points,
-            isUpvoted: pointsChange > 0,
-          },
+          data: { count: points, isUpvoted: pointsChange > 0 },
         },
         200,
       );
@@ -194,7 +180,6 @@ export const postRouter = new Hono<Context>()
     async (c) => {
       const { id } = c.req.valid("param");
       const { content } = c.req.valid("form");
-
       const user = c.get("user")!;
 
       const [comment] = await db.transaction(async (tx) => {
@@ -205,12 +190,18 @@ export const postRouter = new Hono<Context>()
           .returning({ commentCount: postsTable.commentCount });
 
         if (!updated) {
-          throw new HTTPException(404, { message: "Post not found" });
+          throw new HTTPException(404, {
+            message: "Post not found",
+          });
         }
 
         return await tx
           .insert(commentsTable)
-          .values({ content, userId: user.id, postId: id })
+          .values({
+            content,
+            userId: user.id,
+            postId: id,
+          })
           .returning({
             id: commentsTable.id,
             userId: commentsTable.userId,
@@ -227,7 +218,7 @@ export const postRouter = new Hono<Context>()
       });
       return c.json<SuccessResponse<Comment>>({
         success: true,
-        message: "Comment posted successfully",
+        message: "Comment created",
         data: {
           ...comment,
           commentUpvotes: [],
@@ -241,21 +232,19 @@ export const postRouter = new Hono<Context>()
     },
   )
   .get(
-    "/:id/comment",
+    "/:id/comments",
     zValidator("param", z.object({ id: z.coerce.number() })),
     zValidator(
       "query",
       paginationSchema.extend({
-        includeChildren: z.coerce.boolean().optional(),
+        includeChildren: z.boolean({ coerce: true }).optional(),
       }),
     ),
     async (c) => {
       const user = c.get("user");
       const { id } = c.req.valid("param");
-
       const { limit, page, sortBy, order, includeChildren } =
         c.req.valid("query");
-
       const offset = (page - 1) * limit;
 
       const [postExists] = await db
@@ -274,9 +263,7 @@ export const postRouter = new Hono<Context>()
         order === "desc" ? desc(sortByColumn) : asc(sortByColumn);
 
       const [count] = await db
-        .select({
-          count: countDistinct(commentsTable.id),
-        })
+        .select({ count: countDistinct(commentsTable.id) })
         .from(commentsTable)
         .where(
           and(
@@ -301,13 +288,11 @@ export const postRouter = new Hono<Context>()
             },
           },
           commentUpvotes: {
-            columns: {
-              userId: true,
-            },
+            columns: { userId: true },
             where: eq(commentUpvotesTable.userId, user?.id ?? ""),
             limit: 1,
           },
-          childComment: {
+          childComments: {
             limit: includeChildren ? 2 : 0,
             with: {
               author: {
@@ -317,9 +302,7 @@ export const postRouter = new Hono<Context>()
                 },
               },
               commentUpvotes: {
-                columns: {
-                  userId: true,
-                },
+                columns: { userId: true },
                 where: eq(commentUpvotesTable.userId, user?.id ?? ""),
                 limit: 1,
               },
@@ -327,14 +310,14 @@ export const postRouter = new Hono<Context>()
             orderBy: sortOrder,
             extras: {
               createdAt: getISOFormatDateQuery(commentsTable.createdAt).as(
-                "created_as",
+                "created_at",
               ),
             },
           },
         },
         extras: {
           createdAt: getISOFormatDateQuery(commentsTable.createdAt).as(
-            "created_as",
+            "created_at",
           ),
         },
       });
@@ -346,7 +329,7 @@ export const postRouter = new Hono<Context>()
           data: comments as Comment[],
           pagination: {
             page,
-            totalPages: Math.ceil(count!.count / limit) as number,
+            totalPages: Math.ceil(count.count / limit) as number,
           },
         },
         200,
@@ -357,9 +340,9 @@ export const postRouter = new Hono<Context>()
     "/:id",
     zValidator("param", z.object({ id: z.coerce.number() })),
     async (c) => {
-      const user = c.get("user")!;
-      const { id } = c.req.valid("param");
+      const user = c.get("user");
 
+      const { id } = c.req.valid("param");
       const postsQuery = db
         .select({
           id: postsTable.id,
@@ -379,6 +362,7 @@ export const postRouter = new Hono<Context>()
         .from(postsTable)
         .leftJoin(userTable, eq(postsTable.userId, userTable.id))
         .where(eq(postsTable.id, id));
+
       if (user) {
         postsQuery.leftJoin(
           postUpvotesTable,
@@ -388,6 +372,7 @@ export const postRouter = new Hono<Context>()
           ),
         );
       }
+
       const [post] = await postsQuery;
       if (!post) {
         throw new HTTPException(404, { message: "Post not found" });
