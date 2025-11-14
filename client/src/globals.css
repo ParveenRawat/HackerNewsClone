@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #0c0a09;
+
+    --card: #ffffff;
+    --card-foreground: #0c0a09;
+
+    --popover: #ffffff;
+    --popover-foreground: #0c0a09;
+
+    --primary: #ff7402;
+    --primary-foreground: #f9f9f2;
+
+    --secondary: #f4f4ea;
+    --secondary-foreground: #211d1b;
+
+    --muted: #f4f4ea;
+    --muted-foreground: #79736c;
+
+    --accent: #f4f4ea;
+    --accent-foreground: #211d1b;
+
+    --destructive: #ff4646;
+    --destructive-foreground: #f9f9f2;
+
+    --border: #e8e4e1;
+    --input: #e8e4e1;
+    --ring: #ff7402;
+
+    --radius: 0.5rem;
+
+    --chart-1: #ff965d;
+    --chart-2: #2fa594;
+    --chart-3: #274453;
+    --chart-4: #f7cb5c;
+    --chart-5: #ffab49;
+  }
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
