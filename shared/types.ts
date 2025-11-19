@@ -1,6 +1,10 @@
-import { insertCommentsSchema } from "@/db/schemas/comments";
-import { insertPostSchema } from "@/db/schemas/posts";
 import { z } from "zod";
+
+import { insertCommentsSchema } from "../server//db/schemas/comments";
+import { insertPostSchema } from "../server/db/schemas/posts";
+import type { ApiRoutes } from "../server/index";
+
+export { type ApiRoutes };
 
 export type SuccessResponse<T = void> = {
   success: true;
@@ -16,10 +20,13 @@ export type ErrorResponse = {
 export const loginSchema = z.object({
   username: z
     .string()
-    .min(3)
+    .min(3, "the username must be atleast 3 characters long")
     .max(31)
     .regex(/^[a-zA-Z0-9_]+$/),
-  password: z.string().min(3).max(255),
+  password: z
+    .string()
+    .min(3, "password must be more than 3 characters long")
+    .max(255, "password must be under 256 characters long"),
 });
 
 export const createPostSchema = insertPostSchema

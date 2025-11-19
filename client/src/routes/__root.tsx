@@ -1,11 +1,22 @@
 import * as React from "react";
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRootRouteWithContext,
+  Link,
+  Outlet,
+} from "@tanstack/react-router";
+import { type QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
+import { Toaster } from "sonner";
+
 import { Header } from "@/components/site-header";
 
-export const Route = createRootRoute({
+interface RouterContext {
+  queryClient: QueryClient;
+}
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
 });
 
@@ -21,6 +32,7 @@ function RootComponent() {
           <p className="text-sm text-muted-foreground">HackerNews &copy;</p>
         </footer>
       </div>
+      <Toaster />
 
       <ReactQueryDevtools />
       <TanStackRouterDevtools position="bottom-left" />

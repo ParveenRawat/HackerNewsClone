@@ -1,15 +1,17 @@
+import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { eq } from "drizzle-orm";
+
 import { db } from "@/adapter";
 import type { Context } from "@/context";
 import { userTable } from "@/db/schemas/auth";
 import { lucia } from "@/lucia";
 import { loggedIn } from "@/middleware/loggedIn";
-import { loginSchema, type SuccessResponse } from "@/shared/types";
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "drizzle-orm";
-import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import { generateId } from "lucia";
 import postgres from "postgres";
+
+import { loginSchema, type SuccessResponse } from "@/shared/types";
 
 export const authRouter = new Hono<Context>()
   .post("/signup", zValidator("form", loginSchema), async (c) => {
@@ -38,7 +40,10 @@ export const authRouter = new Hono<Context>()
       );
     } catch (error) {
       if (error instanceof postgres.PostgresError && error.code === "23505") {
-        throw new HTTPException(409, { message: "Username already used" });
+        throw new HTTPException(409, {
+          message: "Username already used",
+          cause: { form: true },
+        });
       }
       throw new HTTPException(500, { message: "Failed to create user" });
     }
@@ -55,6 +60,7 @@ export const authRouter = new Hono<Context>()
     if (!existingUser) {
       throw new HTTPException(401, {
         message: "Incorrect username",
+        cause: { form: true },
       });
     }
 
@@ -63,7 +69,10 @@ export const authRouter = new Hono<Context>()
       existingUser.password_hash,
     );
     if (!validPassword) {
-      throw new HTTPException(401, { message: "Incorrect password" });
+      throw new HTTPException(401, {
+        message: "Incorrect password",
+        cause: { form: true },
+      });
     }
 
     const session = await lucia.createSession(existingUser.id, { username });
