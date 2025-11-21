@@ -40,6 +40,12 @@ export const createPostSchema = insertPostSchema
     path: ["url", "content"],
   });
 
+export const createPostSchema2 = z.object({
+  title: z.string().min(3),
+  url: z.string().url(),
+  content: z.string().optional(),
+});
+
 export const sortBySchema = z.enum(["points", "recent"]);
 export const orderSchema = z.enum(["asc", "desc"]);
 

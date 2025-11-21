@@ -1,19 +1,15 @@
 import {
   createFileRoute,
-  Link,
-  redirect,
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { fallback, zodSearchValidator } from "@tanstack/router-zod-adapter";
 
 import { toast } from "sonner";
-import z from "zod";
 
-import { loginSchema } from "@/shared/types";
-import { postSignup, userQueryOptions } from "@/lib/api";
+import { createPostSchema2 } from "@/shared/types";
+import { postSubmit } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,82 +20,79 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { FieldInfo } from "@/components/field-info";
 
-const signupSearchSchema = z.object({
-  redirect: fallback(z.string(), "/").default("/"),
+export const Route = createFileRoute("/_auth/submit")({
+  component: () => <Submit />,
 });
 
-export const Route = createFileRoute("/signup")({
-  component: RouteComponent,
-  validateSearch: zodSearchValidator(signupSearchSchema),
-  beforeLoad: async ({ context, search }) => {
-    const user = await context.queryClient.ensureQueryData(userQueryOptions());
-
-    if (user) {
-      throw redirect({ to: search.redirect });
-    }
-  },
-});
-
-function RouteComponent() {
-  const search = Route.useSearch();
-  const navigate = useNavigate();
-  const router = useRouter();
+function Submit() {
   const queryClient = useQueryClient();
-
+  const router = useRouter();
+  const navigate = useNavigate();
   const form = useForm({
     defaultValues: {
-      username: "",
-      password: "",
+      title: "",
+      content: "",
+      url: "",
     },
-
-    //TODO: fix typescript error
-
     validators: {
-      onChange: loginSchema,
+      onChange: createPostSchema2,
     },
     onSubmit: async ({ value }) => {
-      const res = await postSignup(value.username, value.password);
+      const res = await postSubmit(value.title, value.url, value.content);
       if (res.success) {
-        await queryClient.invalidateQueries({ queryKey: ["user"] });
+        await queryClient.invalidateQueries({ queryKey: ["posts"] });
         router.invalidate();
-        await navigate({ to: search.redirect });
-        return null;
+        await navigate({ to: "/post", search: { id: res.data.postId } });
+        return;
       } else {
         if (!res.isFormError) {
-          toast.error("Sign Up failed", { description: res.error });
+          toast.error("Failed to create post", { description: res.error });
         }
         form.setErrorMap({
-          onSubmit: res.isFormError ? res.error : "Unexpected Error",
+          onSubmit: res.isFormError ? res.error : "Unexpeted error",
         });
       }
     },
   });
 
+  // const shouldBlock = form.useStore(
+  //   (state) => state.isDirty && !state.isSubmitting,
+  // );
+  //
+  // useBlocker({
+  //   condition: shouldBlock,
+  //   blockerFn: () => window.confirm("Are you sure you want to leave?"),
+  // });
+
   return (
     <div className="w-full">
-      <Card className="mx-auto mt-12 max-w-sm border-border/25">
+      <Card className="mx-auto mt-12 max-w-lg border-border/25">
+        <CardHeader>
+          <CardTitle>Create New Post</CardTitle>
+          <CardDescription>
+            Leave url blank to submit a question for discussion. If there is no
+            url, text will appear at the top of the thread. If there is a url,
+            text is optional.
+          </CardDescription>
+        </CardHeader>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
             form.handleSubmit();
           }}
+          className="grid gap-4"
         >
-          <CardHeader>
-            <CardTitle className="text-center text-2xl">Signup</CardTitle>
-            <CardDescription>
-              Enter your details below to create an account
-            </CardDescription>
-          </CardHeader>
           <CardContent>
             <div className="grid gap-4">
               <form.Field
-                name="username"
+                name="title"
                 children={(field) => (
                   <div className="grid gap-2">
-                    <Label htmlFor={field.name}>Username</Label>
+                    <Label htmlFor={field.name}>Title</Label>
                     <Input
                       id={field.name}
                       name={field.name}
@@ -112,12 +105,27 @@ function RouteComponent() {
                 )}
               />
               <form.Field
-                name="password"
+                name="url"
                 children={(field) => (
                   <div className="grid gap-2">
-                    <Label htmlFor={field.name}>Password</Label>
+                    <Label htmlFor={field.name}>URL</Label>
                     <Input
-                      type="password"
+                      id={field.name}
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                    <FieldInfo field={field} />
+                  </div>
+                )}
+              />
+              <form.Field
+                name="content"
+                children={(field) => (
+                  <div className="grid gap-2">
+                    <Label htmlFor={field.name}>Content</Label>
+                    <Textarea
                       id={field.name}
                       name={field.name}
                       value={field.state.value}
@@ -146,16 +154,10 @@ function RouteComponent() {
                     disabled={!canSubmit}
                     className="w-full"
                   >
-                    {isSubmitting ? "..." : "Signup"}
+                    {isSubmitting ? "..." : "Submit"}
                   </Button>
                 )}
               />
-            </div>
-            <div className="mt-4 text-center text-sm">
-              Alrerady have an account ? &nbsp;
-              <Link to="/login" className="underline">
-                Log in
-              </Link>
             </div>
           </CardContent>
         </form>
