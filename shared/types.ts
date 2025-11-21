@@ -96,3 +96,6 @@ export type PaginatedResponse<T> = {
   };
   data: T;
 } & Omit<SuccessResponse, "data">;
+
+export type Order = z.infer<typeof orderSchema>;
+export type SortBy = z.infer<typeof sortBySchema>;

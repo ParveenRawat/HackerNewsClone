@@ -59,7 +59,7 @@ export function Header() {
               variant="secondary"
               className="bg-secondary-foreground text-primary-foreground hover:bg-secondary-foreground/70"
             >
-              <Link to="/">Log In</Link>
+              <Link to="/login">Log In</Link>
             </Button>
           )}
         </div>
